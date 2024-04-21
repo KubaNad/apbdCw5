@@ -5,7 +5,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-builder.Services.AddScoped<IAnimalsService, AnimalService>();
+builder.Services.AddScoped<IAnimalService, AnimalService>();
 builder.Services.AddScoped<IVisitsService, VisitService>();
 
 var app = builder.Build();

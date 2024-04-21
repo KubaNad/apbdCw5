@@ -1,10 +1,15 @@
 ﻿namespace WebApplication1.Animals;
 
-public interface IAnimalsService
+public interface IAnimalService
 {
-    IEnumerable<Animal> GetAnimals();
-    Animal GetAnimalById(int id);
+    IEnumerable<Animal> GetAnimals(string orderBy = "name");
+    
+    Animal? GetAnimalById(int id);
+
+   
     Animal AddAnimal(Animal animal);
-    Animal UpdateAnimal(int id, Animal animal);
-    void DeleteAnimal(int id);
+    
+    Animal? UpdateAnimal(int id, Animal animal);
+    
+    bool DeleteAnimal(int id);
 }

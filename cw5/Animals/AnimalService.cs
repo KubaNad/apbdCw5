@@ -1,52 +1,125 @@
-﻿namespace WebApplication1.Animals;
+﻿using System.Data.SqlClient;
+using System.Data;
+using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Configuration;
 
-public class AnimalService : IAnimalsService
+namespace WebApplication1.Animals;
+
+public class AnimalService : IAnimalService
 {
-    private static List<Animal> _animals = new List<Animal>
-    {
-        new Animal { Id = 1, Name = "Max", Category = "Dog", Weight = 24.5, FurColor = "Black" },
-        new Animal { Id = 2, Name = "Whiskers", Category = "Cat", Weight = 5.3, FurColor = "White" },
-        new Animal { Id = 3, Name = "Buddy", Category = "Dog", Weight = 30.0, FurColor = "Brown" },
-        new Animal { Id = 4, Name = "Shadow", Category = "Cat", Weight = 4.2, FurColor = "Gray" }
-    };
+    private readonly IConfiguration _configuration;
+    private string _connectionString;
 
-    private static int _nextId = 5;
-
-    public IEnumerable<Animal> GetAnimals()
+    public AnimalService(IConfiguration configuration)
     {
-        return _animals;
+        _configuration = configuration;
+        _connectionString = _configuration.GetConnectionString("DefaultConnection");
+    }
+
+    public IEnumerable<Animal> GetAnimals(string orderBy = "name")
+    {
+        List<Animal> animals = new List<Animal>();
+
+        using (SqlConnection connection = new SqlConnection(_connectionString))
+        {
+            string sql = $"SELECT Id, Name, Description, Category, Area FROM Animals ORDER BY {orderBy};";
+            SqlCommand command = new SqlCommand(sql, connection);
+
+            connection.Open();
+            using (SqlDataReader reader = command.ExecuteReader())
+            {
+                while (reader.Read())
+                {
+                    Animal animal = new Animal()
+                    {
+                        Id = reader.GetInt32(0),
+                        Name = reader.GetString(1),
+                        Description = reader.GetString(2),
+                        Category = reader.GetString(3),
+                        Area = reader.GetString(4)
+                    };
+                    animals.Add(animal);
+                }
+            }
+        }
+        return animals;
     }
 
     public Animal GetAnimalById(int id)
     {
-        return _animals.FirstOrDefault(a => a.Id == id);
+        using (SqlConnection connection = new SqlConnection(_connectionString))
+        {
+            string sql = "SELECT Id, Name, Description, Category, Area FROM Animals WHERE Id = @Id;";
+            SqlCommand command = new SqlCommand(sql, connection);
+            command.Parameters.AddWithValue("@Id", id);
+
+            connection.Open();
+            using (SqlDataReader reader = command.ExecuteReader())
+            {
+                if (reader.Read())
+                {
+                    return new Animal()
+                    {
+                        Id = reader.GetInt32(0),
+                        Name = reader.GetString(1),
+                        Description = reader.GetString(2),
+                        Category = reader.GetString(3),
+                        Area = reader.GetString(4)
+                    };
+                }
+            }
+        }
+        return null;
     }
 
     public Animal AddAnimal(Animal animal)
     {
-        animal.Id = _nextId++;
-        _animals.Add(animal);
-        return animal;
-    }
-
-    public Animal UpdateAnimal(int id, Animal updateAnimal)
-    {
-        var animal = GetAnimalById(id);
-        if (animal == null) return null;
-
-        animal.Name = updateAnimal.Name;
-        animal.Category = updateAnimal.Category;
-        animal.Weight = updateAnimal.Weight;
-        animal.FurColor = updateAnimal.FurColor;
-        return animal;
-    }
-
-    public void DeleteAnimal(int id)
-    {
-        var animal = GetAnimalById(id);
-        if (animal != null)
+        using (SqlConnection connection = new SqlConnection(_connectionString))
         {
-            _animals.Remove(animal);
+            string sql = "INSERT INTO Animals (Name, Description, Category, Area) VALUES (@Name, @Description, @Category, @Area); SELECT SCOPE_IDENTITY();";
+            SqlCommand command = new SqlCommand(sql, connection);
+            command.Parameters.AddWithValue("@Name", animal.Name);
+            command.Parameters.AddWithValue("@Description", animal.Description);
+            command.Parameters.AddWithValue("@Category", animal.Category);
+            command.Parameters.AddWithValue("@Area", animal.Area);
+
+            connection.Open();
+            animal.Id = Convert.ToInt32(command.ExecuteScalar());
+        }
+        return animal;
+    }
+
+    public Animal UpdateAnimal(int id, Animal animal)
+    {
+        using (SqlConnection connection = new SqlConnection(_connectionString))
+        {
+            string sql = "UPDATE Animals SET Name = @Name, Description = @Description, Category = @Category, Area = @Area WHERE Id = @Id;";
+            SqlCommand command = new SqlCommand(sql, connection);
+            command.Parameters.AddWithValue("@Id", id);
+            command.Parameters.AddWithValue("@Name", animal.Name);
+            command.Parameters.AddWithValue("@Description", animal.Description);
+            command.Parameters.AddWithValue("@Category", animal.Category);
+            command.Parameters.AddWithValue("@Area", animal.Area);
+
+            connection.Open();
+            int result = command.ExecuteNonQuery();
+            if (result > 0)
+                return animal;
+        }
+        return null;
+    }
+
+    public bool DeleteAnimal(int id)
+    {
+        using (SqlConnection connection = new SqlConnection(_connectionString))
+        {
+            string sql = "DELETE FROM Animals WHERE Id = @Id;";
+            SqlCommand command = new SqlCommand(sql, connection);
+            command.Parameters.AddWithValue("@Id", id);
+
+            connection.Open();
+            int result = command.ExecuteNonQuery();
+            return result > 0;
         }
     }
 }
