@@ -5,7 +5,6 @@ public interface IAnimalService
     IEnumerable<Animal> GetAnimals(string orderBy = "name");
     
     Animal? GetAnimalById(int id);
-
    
     Animal AddAnimal(Animal animal);
     
